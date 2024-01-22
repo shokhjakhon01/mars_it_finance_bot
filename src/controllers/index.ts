@@ -2,7 +2,6 @@ import { Bot, Context, InlineKeyboard, Keyboard } from "grammy"
 import User from "../models/user.schema"
 import Student from "../models/student.schema"
 import * as cron from "node-cron"
-import { Types } from "mongoose"
 import { IStudent } from "src/interface/interface"
 
 const GROUP_ID = -1001909251377
@@ -18,7 +17,9 @@ class Controllers {
     reason?: string
     money_amount?: string
     card_number?: string
+    created_at?: Date
   } = {}
+  private post_id: string
   private cronJob: cron.ScheduledTask | null = null
   constructor(private bot: Bot) {
     this.handleText()
@@ -38,9 +39,8 @@ class Controllers {
     }
 
     // Schedule a task to check for expired posts every minute
-    this.cronJob = cron.schedule("0 0 */3 * *", async () => {
+    this.cronJob = cron.schedule("0 0 * * *", async () => {
       const expiredPosts = await Student.find().exec()
-      console.log(expiredPosts)
 
       if (expiredPosts.length == 0) {
         this.cronJob = null
@@ -64,8 +64,21 @@ class Controllers {
     }
   }
 
-  private formatPostInfo(post: IStudent): string {
-    return `#${post.branch_name}\n\nO'quvchi: ${post.student_name}\nYosh: ${post.age}\nTel raqam: ${post.tel_number}\nO'qutuvchi: ${post.teacher_name}\nGuruhi: ${post.group_name}\n\nSabab: ${post.reason}\n\nSumma: ${post.money_amount}\nKarta raqami\n${post.card_number} \n \n@mars_financial_managerss`
+  private formatPostInfo(post: any): string {
+    const createdAtTimestamp = new Date(post.created_at)
+
+    const newTimestamp = new Date(createdAtTimestamp)
+    newTimestamp.setDate(createdAtTimestamp.getDate() + 14)
+
+    const formattedNewDate = newTimestamp.toLocaleDateString("en-US", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })
+
+    return `#${post.branch_name}\n\nO'quvchi: ${post.student_name}\nYosh: ${post.age}\nTel raqam: ${post.tel_number}\nO'qutuvchi: ${post.teacher_name}\nGuruhi: ${post.group_name}\n\nSabab: ${post.reason}\n\nSumma: ${post.money_amount} \n
+    ${formattedNewDate} shu sanagacha qaytarilishi kerak
+    \nKarta raqami\n${post.card_number} \n \n@mars_financial_managerss`
   }
 
   async handleText() {
@@ -165,25 +178,8 @@ class Controllers {
     })
   }
 
-  // format user information like telelgram post
-  private formatUserInfo(): string {
-    const {
-      branch_name,
-      student_name,
-      age,
-      tel_number,
-      teacher_name,
-      group_name,
-      reason,
-      money_amount,
-      card_number,
-    } = this.studentInfo
-
-    return `#${branch_name}\n\nO'quvchi: ${student_name}\nYosh: ${age}\nTel raqam: ${tel_number}\nO'qutuvchi: ${teacher_name}\nGuruhi: ${group_name}\n\nSabab: ${reason}\n\nSumma: ${money_amount}\nKarta raqami\n${card_number} \n \n@mars_financial_managerss`
-  }
-
   private async sendFormattedInfo(ctx: Context) {
-    const formattedInfo = this.formatUserInfo()
+    const formattedInfo = this.formatPostInfo(this.studentInfo)
     await ctx.reply(formattedInfo)
   }
 
@@ -225,16 +221,15 @@ class Controllers {
             const allPosts = await Student.find({ user_id: existingUser._id })
 
             if (allPosts.length > 0) {
-              const inlineKeyboard = new InlineKeyboard()
-              allPosts.forEach((post) => {
-                const formattedPostInfo = this.formatPostInfo(post)
-                inlineKeyboard
-                  .text(`Bajarildi`, `bajarildi__${post._id}`)
-                  .text("Back", "back")
-                ctx.reply(formattedPostInfo, {
+              for (const post of allPosts) {
+                const inlineKeyboard = new InlineKeyboard()
+                inlineKeyboard.text(`Bajarildi`, `bajarildi_${post._id}`)
+                inlineKeyboard.text("Back", "back")
+
+                ctx.reply(this.formatPostInfo(post), {
                   reply_markup: inlineKeyboard,
                 })
-              })
+              }
             } else {
               const inlineKeyboard = new InlineKeyboard().text("Back", "back")
               ctx.reply("Post topilmadi:", {
@@ -256,12 +251,20 @@ class Controllers {
         ctx.reply("Choose an option:", {
           reply_markup: inlineKeyboard,
         })
+      } else if (userResponse.startsWith("bajarildi_")) {
+        let postId = userResponse.split("_")[1]
+        this.post_id = postId
+        const deletedPost = await Student.findByIdAndDelete(this.post_id)
+        const inlineKeyboard = new InlineKeyboard().text("Back", "back")
+        ctx.reply("Malumot uchirildi:", {
+          reply_markup: inlineKeyboard,
+        })
       }
     })
   }
 
   private async saveAndSendToGroup(ctx: Context) {
-    const formattedInfo = this.formatUserInfo()
+    const formattedInfo = this.formatPostInfo(this.studentInfo)
     const existingUser = await User.findOne({ telegram_id: ctx.from.id })
 
     try {

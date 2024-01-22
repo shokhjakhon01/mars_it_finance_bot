@@ -25,7 +25,7 @@ class Controllers {
             }
             this.cronJob = null;
         }
-        this.cronJob = cron.schedule("0 0 */3 * *", async () => {
+        this.cronJob = cron.schedule("0 0 * * *", async () => {
             const expiredPosts = await student_schema_1.default.find().exec();
             console.log(expiredPosts);
             if (expiredPosts.length == 0) {
@@ -48,7 +48,17 @@ class Controllers {
         }
     }
     formatPostInfo(post) {
-        return `#${post.branch_name}\n\nO'quvchi: ${post.student_name}\nYosh: ${post.age}\nTel raqam: ${post.tel_number}\nO'qutuvchi: ${post.teacher_name}\nGuruhi: ${post.group_name}\n\nSabab: ${post.reason}\n\nSumma: ${post.money_amount}\nKarta raqami\n${post.card_number} \n \n@mars_financial_managerss`;
+        const createdAtTimestamp = new Date(post.created_at);
+        const newTimestamp = new Date(createdAtTimestamp);
+        newTimestamp.setDate(createdAtTimestamp.getDate() + 14);
+        const formattedNewDate = newTimestamp.toLocaleDateString("en-US", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+        });
+        return `#${post.branch_name}\n\nO'quvchi: ${post.student_name}\nYosh: ${post.age}\nTel raqam: ${post.tel_number}\nO'qutuvchi: ${post.teacher_name}\nGuruhi: ${post.group_name}\n\nSabab: ${post.reason}\n\nSumma: ${post.money_amount} \n
+    ${formattedNewDate} shu sanagacha qaytarilishi kerak
+    \nKarta raqami\n${post.card_number} \n \n@mars_financial_managerss`;
     }
     async handleText() {
         this.bot.on(":text", async (ctx) => {
@@ -117,12 +127,8 @@ class Controllers {
             }
         });
     }
-    formatUserInfo() {
-        const { branch_name, student_name, age, tel_number, teacher_name, group_name, reason, money_amount, card_number, } = this.studentInfo;
-        return `#${branch_name}\n\nO'quvchi: ${student_name}\nYosh: ${age}\nTel raqam: ${tel_number}\nO'qutuvchi: ${teacher_name}\nGuruhi: ${group_name}\n\nSabab: ${reason}\n\nSumma: ${money_amount}\nKarta raqami\n${card_number} \n \n@mars_financial_managerss`;
-    }
     async sendFormattedInfo(ctx) {
-        const formattedInfo = this.formatUserInfo();
+        const formattedInfo = this.formatPostInfo(this.studentInfo);
         await ctx.reply(formattedInfo);
     }
     async handleConfirmation() {
@@ -156,16 +162,14 @@ class Controllers {
                     if (existingUser) {
                         const allPosts = await student_schema_1.default.find({ user_id: existingUser._id });
                         if (allPosts.length > 0) {
-                            const inlineKeyboard = new grammy_1.InlineKeyboard();
-                            allPosts.forEach((post) => {
-                                const formattedPostInfo = this.formatPostInfo(post);
-                                inlineKeyboard
-                                    .text(`Bajarildi`, `bajarildi__${post._id}`)
-                                    .text("Back", "back");
-                                ctx.reply(formattedPostInfo, {
+                            for (const post of allPosts) {
+                                const inlineKeyboard = new grammy_1.InlineKeyboard();
+                                inlineKeyboard.text(`Bajarildi`, `bajarildi_${post._id}`);
+                                inlineKeyboard.text("Back", "back");
+                                ctx.reply(this.formatPostInfo(post), {
                                     reply_markup: inlineKeyboard,
                                 });
-                            });
+                            }
                         }
                         else {
                             const inlineKeyboard = new grammy_1.InlineKeyboard().text("Back", "back");
@@ -191,10 +195,19 @@ class Controllers {
                     reply_markup: inlineKeyboard,
                 });
             }
+            else if (userResponse.startsWith("bajarildi_")) {
+                let postId = userResponse.split("_")[1];
+                this.post_id = postId;
+                const deletedPost = await student_schema_1.default.findByIdAndDelete(this.post_id);
+                const inlineKeyboard = new grammy_1.InlineKeyboard().text("Back", "back");
+                ctx.reply("Malumot uchirildi:", {
+                    reply_markup: inlineKeyboard,
+                });
+            }
         });
     }
     async saveAndSendToGroup(ctx) {
-        const formattedInfo = this.formatUserInfo();
+        const formattedInfo = this.formatPostInfo(this.studentInfo);
         const existingUser = await user_schema_1.default.findOne({ telegram_id: ctx.from.id });
         try {
             await student_schema_1.default.create({ ...this.studentInfo, user_id: existingUser._id });

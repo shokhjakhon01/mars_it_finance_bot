@@ -18,4 +18,5 @@ export interface IStudent extends Document {
   money_amount: number
   card_number: string
   user_id: Types.ObjectId
+  created_at: Date
 }
