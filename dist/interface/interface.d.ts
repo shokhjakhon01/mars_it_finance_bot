@@ -40,4 +40,5 @@ export interface IStudent extends Document {
     card_number: string;
     user_id: Types.ObjectId;
     created_at: Date;
+    message_id: number;
 }

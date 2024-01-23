@@ -48,6 +48,10 @@ const studentSchema = new mongoose_1.Schema({
         default: Date.now,
         expires: 1209600,
     },
+    message_id: {
+        type: "number",
+        required: true,
+    },
 });
 const Student = (0, mongoose_1.model)("Student", studentSchema);
 exports.default = Student;

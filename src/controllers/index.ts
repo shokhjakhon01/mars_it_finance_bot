@@ -2,9 +2,7 @@ import { Bot, Context, InlineKeyboard, Keyboard } from "grammy"
 import User from "../models/user.schema"
 import Student from "../models/student.schema"
 import * as cron from "node-cron"
-import { IStudent } from "src/interface/interface"
-
-const GROUP_ID = -1001909251377
+import { GROUP_ID } from "../config/index"
 
 class Controllers {
   private studentInfo: {
@@ -17,10 +15,10 @@ class Controllers {
     reason?: string
     money_amount?: string
     card_number?: string
-    created_at?: Date
   } = {}
   private post_id: string
   private cronJob: cron.ScheduledTask | null = null
+  private sendingPostInfo: {}
   constructor(private bot: Bot) {
     this.handleText()
     this.handleConfirmation()
@@ -65,7 +63,7 @@ class Controllers {
   }
 
   private formatPostInfo(post: any): string {
-    const createdAtTimestamp = new Date(post.created_at)
+    const createdAtTimestamp = new Date(post.created_at || Date.now())
 
     const newTimestamp = new Date(createdAtTimestamp)
     newTimestamp.setDate(createdAtTimestamp.getDate() + 14)
@@ -76,9 +74,8 @@ class Controllers {
       year: "numeric",
     })
 
-    return `#${post.branch_name}\n\nO'quvchi: ${post.student_name}\nYosh: ${post.age}\nTel raqam: ${post.tel_number}\nO'qutuvchi: ${post.teacher_name}\nGuruhi: ${post.group_name}\n\nSabab: ${post.reason}\n\nSumma: ${post.money_amount} \n
-    ${formattedNewDate} shu sanagacha qaytarilishi kerak
-    \nKarta raqami\n${post.card_number} \n \n@mars_financial_managerss`
+    return `#${post.branch_name}\n\nO'quvchi: ${post.student_name}\nYosh: ${post.age}\nTel raqam: ${post.tel_number}\nO'qituvchi: ${post.teacher_name}\nGuruhi: ${post.group_name}\n\nSabab: ${post.reason}\n\nSumma: ${post.money_amount} \n${formattedNewDate} shu sanagacha qaytarilishi kerak
+    \nKarta raqami\n${post.card_number} \n \n@mars_financial_manager`
   }
 
   async handleText() {
@@ -86,7 +83,6 @@ class Controllers {
       const isCommandInGroup = ctx.chat?.id === GROUP_ID
 
       if (isCommandInGroup) {
-        console.log("Ignoring command in the specified group")
         return
       }
       const messageText = ctx.message?.text
@@ -252,13 +248,34 @@ class Controllers {
           reply_markup: inlineKeyboard,
         })
       } else if (userResponse.startsWith("bajarildi_")) {
-        let postId = userResponse.split("_")[1]
-        this.post_id = postId
-        const deletedPost = await Student.findByIdAndDelete(this.post_id)
-        const inlineKeyboard = new InlineKeyboard().text("Back", "back")
-        ctx.reply("Malumot uchirildi:", {
-          reply_markup: inlineKeyboard,
-        })
+        try {
+          let postId = ctx.callbackQuery.data.split("_")[1]
+          this.post_id = postId
+          const postDeleted = await Student.findById(this.post_id)
+
+          if (postDeleted) {
+            const chatId = GROUP_ID
+            const messageIdToDelete = postDeleted.message_id
+
+            try {
+              await ctx.api.deleteMessage(chatId, messageIdToDelete)
+              const deletedPost = await Student.findByIdAndDelete(this.post_id)
+
+              const inlineKeyboard = new InlineKeyboard().text("Back", "back")
+              await ctx.reply("Malumot uchirildi:", {
+                reply_markup: inlineKeyboard,
+              })
+            } catch (deleteError) {
+              console.error("Error deleting message:", deleteError)
+            }
+          } else {
+            console.error(
+              "Post not found or ctx.callbackQuery.message is undefined. Cannot delete message."
+            )
+          }
+        } catch (error) {
+          console.error("Error fetching message:", error)
+        }
       }
     })
   }
@@ -268,9 +285,12 @@ class Controllers {
     const existingUser = await User.findOne({ telegram_id: ctx.from.id })
 
     try {
-      await Student.create({ ...this.studentInfo, user_id: existingUser._id })
-      const groupId = -1001909251377
-      await ctx.api.sendMessage(groupId, formattedInfo)
+      const posts = await ctx.api.sendMessage(GROUP_ID, formattedInfo)
+      await Student.create({
+        ...this.studentInfo,
+        user_id: existingUser._id,
+        message_id: posts.message_id,
+      })
 
       this.studentInfo = {}
     } catch (error) {

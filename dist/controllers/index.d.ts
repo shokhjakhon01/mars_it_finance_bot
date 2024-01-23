@@ -4,6 +4,7 @@ declare class Controllers {
     private studentInfo;
     private post_id;
     private cronJob;
+    private sendingPostInfo;
     constructor(bot: Bot);
     private scheduleExpiredPostsCheck;
     private sendExpiredPostToGroup;

@@ -11,3 +11,6 @@ async function mongodbConnection() {
 }
 
 export default mongodbConnection
+
+export const GROUP_ID = -1001909251377
+// export const GROUP_ID = -4176834198

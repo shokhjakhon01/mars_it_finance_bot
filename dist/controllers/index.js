@@ -4,7 +4,7 @@ const grammy_1 = require("grammy");
 const user_schema_1 = require("../models/user.schema");
 const student_schema_1 = require("../models/student.schema");
 const cron = require("node-cron");
-const GROUP_ID = -1001909251377;
+const index_1 = require("../config/index");
 class Controllers {
     constructor(bot) {
         this.bot = bot;
@@ -27,13 +27,12 @@ class Controllers {
         }
         this.cronJob = cron.schedule("0 0 * * *", async () => {
             const expiredPosts = await student_schema_1.default.find().exec();
-            console.log(expiredPosts);
             if (expiredPosts.length == 0) {
                 this.cronJob = null;
             }
             if (expiredPosts && expiredPosts.length > 0) {
                 for (const post of expiredPosts) {
-                    await this.sendExpiredPostToGroup(GROUP_ID, post);
+                    await this.sendExpiredPostToGroup(index_1.GROUP_ID, post);
                 }
             }
         });
@@ -48,7 +47,7 @@ class Controllers {
         }
     }
     formatPostInfo(post) {
-        const createdAtTimestamp = new Date(post.created_at);
+        const createdAtTimestamp = new Date(post.created_at || Date.now());
         const newTimestamp = new Date(createdAtTimestamp);
         newTimestamp.setDate(createdAtTimestamp.getDate() + 14);
         const formattedNewDate = newTimestamp.toLocaleDateString("en-US", {
@@ -56,15 +55,13 @@ class Controllers {
             month: "long",
             year: "numeric",
         });
-        return `#${post.branch_name}\n\nO'quvchi: ${post.student_name}\nYosh: ${post.age}\nTel raqam: ${post.tel_number}\nO'qutuvchi: ${post.teacher_name}\nGuruhi: ${post.group_name}\n\nSabab: ${post.reason}\n\nSumma: ${post.money_amount} \n
-    ${formattedNewDate} shu sanagacha qaytarilishi kerak
-    \nKarta raqami\n${post.card_number} \n \n@mars_financial_managerss`;
+        return `#${post.branch_name}\n\nO'quvchi: ${post.student_name}\nYosh: ${post.age}\nTel raqam: ${post.tel_number}\nO'qituvchi: ${post.teacher_name}\nGuruhi: ${post.group_name}\n\nSabab: ${post.reason}\n\nSumma: ${post.money_amount} \n${formattedNewDate} shu sanagacha qaytarilishi kerak
+    \nKarta raqami\n${post.card_number} \n \n@mars_financial_manager`;
     }
     async handleText() {
         this.bot.on(":text", async (ctx) => {
-            const isCommandInGroup = ctx.chat?.id === GROUP_ID;
+            const isCommandInGroup = ctx.chat?.id === index_1.GROUP_ID;
             if (isCommandInGroup) {
-                console.log("Ignoring command in the specified group");
                 return;
             }
             const messageText = ctx.message?.text;
@@ -196,13 +193,32 @@ class Controllers {
                 });
             }
             else if (userResponse.startsWith("bajarildi_")) {
-                let postId = userResponse.split("_")[1];
-                this.post_id = postId;
-                const deletedPost = await student_schema_1.default.findByIdAndDelete(this.post_id);
-                const inlineKeyboard = new grammy_1.InlineKeyboard().text("Back", "back");
-                ctx.reply("Malumot uchirildi:", {
-                    reply_markup: inlineKeyboard,
-                });
+                try {
+                    let postId = ctx.callbackQuery.data.split("_")[1];
+                    this.post_id = postId;
+                    const postDeleted = await student_schema_1.default.findById(this.post_id);
+                    if (postDeleted) {
+                        const chatId = index_1.GROUP_ID;
+                        const messageIdToDelete = postDeleted.message_id;
+                        try {
+                            await ctx.api.deleteMessage(chatId, messageIdToDelete);
+                            const deletedPost = await student_schema_1.default.findByIdAndDelete(this.post_id);
+                            const inlineKeyboard = new grammy_1.InlineKeyboard().text("Back", "back");
+                            await ctx.reply("Malumot uchirildi:", {
+                                reply_markup: inlineKeyboard,
+                            });
+                        }
+                        catch (deleteError) {
+                            console.error("Error deleting message:", deleteError);
+                        }
+                    }
+                    else {
+                        console.error("Post not found or ctx.callbackQuery.message is undefined. Cannot delete message.");
+                    }
+                }
+                catch (error) {
+                    console.error("Error fetching message:", error);
+                }
             }
         });
     }
@@ -210,9 +226,12 @@ class Controllers {
         const formattedInfo = this.formatPostInfo(this.studentInfo);
         const existingUser = await user_schema_1.default.findOne({ telegram_id: ctx.from.id });
         try {
-            await student_schema_1.default.create({ ...this.studentInfo, user_id: existingUser._id });
-            const groupId = -1001909251377;
-            await ctx.api.sendMessage(groupId, formattedInfo);
+            const posts = await ctx.api.sendMessage(index_1.GROUP_ID, formattedInfo);
+            await student_schema_1.default.create({
+                ...this.studentInfo,
+                user_id: existingUser._id,
+                message_id: posts.message_id,
+            });
             this.studentInfo = {};
         }
         catch (error) {

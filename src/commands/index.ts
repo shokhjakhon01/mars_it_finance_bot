@@ -1,5 +1,6 @@
-import { Bot, Context, InlineKeyboard, Keyboard } from "grammy"
+import { Bot, Context, InlineKeyboard } from "grammy"
 import User from "../models/user.schema"
+import { GROUP_ID } from "../config/index"
 
 class Commands {
   constructor(private bot: Bot) {
@@ -10,12 +11,9 @@ class Commands {
 
   help() {
     this.bot.command("help", (ctx: Context) => {
-      const groupID = -1001909251377
-      // 5635431670
-      const isCommandInGroup = ctx.chat?.id === groupID
+      const isCommandInGroup = ctx.chat?.id === GROUP_ID
 
       if (isCommandInGroup) {
-        console.log("Ignoring command in the specified group")
         return
       }
       ctx.reply("Press /start to use the bot.")
@@ -24,12 +22,10 @@ class Commands {
 
   start() {
     this.bot.command("start", async (ctx: Context) => {
-      const groupID = -1001909251377
-      // 5603543167
-      const isCommandInGroup = ctx.chat?.id === groupID
+      const isCommandInGroup = ctx.chat?.id === GROUP_ID
+      console.log(ctx.chat)
 
       if (isCommandInGroup) {
-        console.log("Ignoring command in the specified group")
         return
       }
 

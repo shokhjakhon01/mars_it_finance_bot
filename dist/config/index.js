@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.GROUP_ID = void 0;
 const mongoose_1 = require("mongoose");
 require("dotenv/config");
 async function mongodbConnection() {
@@ -12,4 +13,5 @@ async function mongodbConnection() {
     }
 }
 exports.default = mongodbConnection;
+exports.GROUP_ID = -1001909251377;
 //# sourceMappingURL=index.js.map

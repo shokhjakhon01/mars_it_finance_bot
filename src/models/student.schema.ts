@@ -56,6 +56,10 @@ const studentSchema = new Schema({
     default: Date.now,
     expires: 1209600,
   },
+  message_id: {
+    type: "number",
+    required: true,
+  },
 })
 
 const Student = model<IStudent>("Student", studentSchema)

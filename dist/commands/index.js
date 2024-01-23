@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const grammy_1 = require("grammy");
 const user_schema_1 = require("../models/user.schema");
+const index_1 = require("../config/index");
 class Commands {
     constructor(bot) {
         this.bot = bot;
@@ -11,10 +12,8 @@ class Commands {
     }
     help() {
         this.bot.command("help", (ctx) => {
-            const groupID = -1001909251377;
-            const isCommandInGroup = ctx.chat?.id === groupID;
+            const isCommandInGroup = ctx.chat?.id === index_1.GROUP_ID;
             if (isCommandInGroup) {
-                console.log("Ignoring command in the specified group");
                 return;
             }
             ctx.reply("Press /start to use the bot.");
@@ -22,10 +21,9 @@ class Commands {
     }
     start() {
         this.bot.command("start", async (ctx) => {
-            const groupID = -1001909251377;
-            const isCommandInGroup = ctx.chat?.id === groupID;
+            const isCommandInGroup = ctx.chat?.id === index_1.GROUP_ID;
+            console.log(ctx.chat);
             if (isCommandInGroup) {
-                console.log("Ignoring command in the specified group");
                 return;
             }
             ctx.reply("Assolumu Alaykum Mars it school finance botiga xush kelibsiz");
