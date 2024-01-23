@@ -23,7 +23,6 @@ class Commands {
   start() {
     this.bot.command("start", async (ctx: Context) => {
       const isCommandInGroup = ctx.chat?.id === GROUP_ID
-      console.log(ctx.chat)
 
       if (isCommandInGroup) {
         return

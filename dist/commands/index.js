@@ -1,7 +1,10 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const grammy_1 = require("grammy");
-const user_schema_1 = require("../models/user.schema");
+const user_schema_1 = __importDefault(require("../models/user.schema"));
 const index_1 = require("../config/index");
 class Commands {
     constructor(bot) {
@@ -22,7 +25,6 @@ class Commands {
     start() {
         this.bot.command("start", async (ctx) => {
             const isCommandInGroup = ctx.chat?.id === index_1.GROUP_ID;
-            console.log(ctx.chat);
             if (isCommandInGroup) {
                 return;
             }

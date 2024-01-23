@@ -228,7 +228,7 @@ class Controllers {
               }
             } else {
               const inlineKeyboard = new InlineKeyboard().text("Back", "back")
-              ctx.reply("Post topilmadi:", {
+              ctx.reply("Post topilmadi!:", {
                 reply_markup: inlineKeyboard,
               })
             }
