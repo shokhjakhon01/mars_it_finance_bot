@@ -19,22 +19,22 @@ bot.use(session())
 mongodbConnection()
 commands(bot)
 controllers(bot)
-bot.api.deleteWebhook()
+// bot.api.deleteWebhook()
 
 bot.start()
 
-app.post(webHookPath, async (req, res) => {
-  try {
-    await bot.handleUpdate(req.body)
-    res.sendStatus(200)
-  } catch (error) {
-    console.error("Error handling update:", error)
-    res.sendStatus(500)
-  }
-})
+// app.post(webHookPath, async (req, res) => {
+//   try {
+//     await bot.handleUpdate(req.body)
+//     res.sendStatus(200)
+//   } catch (error) {
+//     console.error("Error handling update:", error)
+//     res.sendStatus(500)
+//   }
+// })
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${process.env.DOMAIN_NAME}`)
+// app.listen(PORT, () => {
+//   console.log(`Server is running on port ${process.env.DOMAIN_NAME}`)
 
-  bot.api.setWebhook(webHookUrl)
-})
+//   bot.api.setWebhook(webHookUrl)
+// })
